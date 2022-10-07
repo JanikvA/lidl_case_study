@@ -1,4 +1,3 @@
-from operator import contains
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
@@ -43,120 +42,16 @@ def correlation_plot_winpercent(df):
     plt.close(fig)
 
 
-def main():
-    candy_df = pd.read_csv("candy-data.csv")
-    candy_df = candy_df.sort_values(by=["winpercent"], ascending=False)
-    pd.set_option("display.max_columns", None)
-    candy_df.head(5).to_html("most_popular_candybrands.html")
-    # features excludes the sugar- and price-percentile columns along the competitor name and winpercent
-    features = [
-        "chocolate",
-        "fruity",
-        "caramel",
-        "peanutyalmondy",
-        "nougat",
-        "crispedricewafer",
-        "hard",
-        "bar",
-        "pluribus",
-    ]
-    feature_correlation(candy_df.drop(["competitorname"], axis=1))
-    correlation_plot_winpercent(candy_df.drop(["competitorname"], axis=1))
-    print(f"{len(candy_df)=}")
-    print(f"{len(candy_df[features].drop_duplicates())=}")
-    print(
-        f"{len(candy_df.drop(['winpercent', 'competitorname'], axis=1).drop_duplicates())=}"
-    )
-    num_features = candy_df[features].sum(axis=1)
-    candy_df["num_features"] = num_features
-    print(f"Avergae number of features: {num_features.mean()} +- {num_features.std()}")
-
-    # combinations
-    contains_dict = {
-        "features": [],
-        "mean_winpct": [],
-        "std_winpct": [],
-        "n_samples": [],
-        "n_feat": [],
-        "mean_n_feat": [],
-        "std_n_feat": [],
-    }
-    for num in range(1, 6):
-        all_combinations = itertools.combinations(features, num)
-        for combi in all_combinations:
-            _list_ver = list(combi)
-            mean_winpct = (
-                candy_df[_list_ver + ["winpercent"]]
-                .groupby(_list_ver)
-                .mean()["winpercent"]
-            )
-            std_winpct = (
-                candy_df[_list_ver + ["winpercent"]]
-                .groupby(_list_ver)
-                .std()["winpercent"]
-            )
-            mean_n_features = (
-                candy_df[_list_ver + ["num_features"]]
-                .groupby(_list_ver)
-                .mean()["num_features"]
-            )
-            std_n_features = (
-                candy_df[_list_ver + ["num_features"]]
-                .groupby(_list_ver)
-                .std()["num_features"]
-            )
-            n_samples = candy_df[_list_ver].groupby(_list_ver)[_list_ver[0]].count()
-            try:
-                ind = (1,) * num
-                feat = "+".join(_list_ver)
-                mean = mean_winpct.loc[ind]
-                std = std_winpct.loc[ind]
-                n_samp = n_samples.loc[ind]
-                mean_n_feat = mean_n_features.loc[ind]
-                std_n_feat = std_n_features.loc[ind]
-                contains_dict["features"].append(feat)
-                contains_dict["mean_winpct"].append(mean)
-                contains_dict["std_winpct"].append(std)
-                contains_dict["n_samples"].append(n_samp)
-                contains_dict["mean_n_feat"].append(mean_n_feat)
-                contains_dict["std_n_feat"].append(std_n_feat)
-                contains_dict["n_feat"].append(len(combi))
-            except KeyError:
-                continue
-    contains_df = pd.DataFrame(contains_dict)
-    contains_df = contains_df.sort_values(by=["n_samples"], ascending=False)
-    contains_df.head(10).to_html("most_common_combinations.html")
-    contains_df = contains_df[contains_df["n_samples"] >= 10].sort_values(
-        by=["mean_winpct"], ascending=False
-    )
-    contains_df.head(10).to_html("most_popular_combinations.html")
-    contains_df = contains_df[contains_df["n_feat"] == 1].sort_values(
-        by=["mean_winpct"], ascending=False
-    )
-    contains_df.head(10).to_html("winpct_per_feature.html")
-
-    # histplot winpct dist
-    ax = sns.histplot(candy_df["winpercent"], color="blue", edgecolor="red")
-    ax.yaxis.set_major_locator(MaxNLocator(integer=True))
-    plt.savefig("winpercent_dist_histplot.png")
-    plt.close()
-
-    # histplot num_features
-    sns.histplot(num_features)
-    plt.savefig("num_feature_histplot.png")
-    plt.close()
-
-    # boxplot
+def make_boxplot(x, y, out_name):
     ax = sns.boxplot(
-        data=candy_df,
-        x="num_features",
-        y="winpercent",
+        x=x,
+        y=y,
         color="blue",
         whiskerprops={"color": "red"},
         capprops={"color": "red"},
         medianprops={"color": "red"},
     )
-    sns.swarmplot(data=candy_df, x="num_features", y="winpercent")
+    sns.swarmplot(x=x, y=y)
     lines = ax.get_lines()
     categories = ax.get_xticks()
     for cat in categories:
@@ -169,11 +64,146 @@ def main():
             va="center",
             fontweight="bold",
             size=10,
-            color="red",
+            color="blue",
             bbox=dict(facecolor="yellow", alpha=1),
         )
-    plt.savefig("num_feature_winpercent_boxplot.png")
+    plt.savefig(out_name)
     plt.close()
+
+
+def create_contains_df(data, characteristics):
+    mean_std_vars = ["winpercent", "num_features", "num_flavours"]
+    contains_dict = {
+        "combination": [],
+        "n_samples": [],
+        "n_feat": [],
+    }
+    for mean_std in ["mean", "std"]:
+        contains_dict.update({f"{mean_std}_{var}": [] for var in mean_std_vars})
+    for num in range(1, 6):
+        all_combinations = itertools.combinations(characteristics, num)
+        for combi in all_combinations:
+            _list_ver = list(combi)
+            ind = (1,) * num
+            feat = "+".join(_list_ver)
+            n_samples = data[_list_ver].groupby(_list_ver)[_list_ver[0]].count()
+            if ind in n_samples or len(ind) == 1:
+                n_samp = n_samples.loc[ind]
+                contains_dict["combination"].append(feat)
+                contains_dict["n_samples"].append(n_samp)
+                contains_dict["n_feat"].append(len(combi))
+                for val in mean_std_vars:
+                    grouped_view = data[_list_ver + [val]].groupby(_list_ver)[val]
+                    contains_dict[f"mean_{val}"].append(grouped_view.mean().loc[ind])
+                    contains_dict[f"std_{val}"].append(grouped_view.std().loc[ind])
+            else:
+                continue
+    contains_df = pd.DataFrame(contains_dict)
+    return contains_df
+
+
+def main():
+    candy_df = pd.read_csv("candy-data.csv")
+    # flavours/features exclude the sugar- and price-percentile columns as well as the competitor name and winpercent
+    flavours = [
+        "chocolate",
+        "fruity",
+        "caramel",
+        "peanutyalmondy",
+        "nougat",
+    ]
+    features = [
+        "crispedricewafer",
+        "hard",
+        "bar",
+        "pluribus",
+    ]
+    print(f"{len(candy_df)=}")
+    print(f"{len(candy_df[features].drop_duplicates())=}")
+    print(
+        f"{len(candy_df.drop(['winpercent', 'competitorname'], axis=1).drop_duplicates())=}"
+    )
+    num_features = candy_df[features].sum(axis=1)
+    candy_df["num_features"] = num_features
+    print(f"Avergae number of features: {num_features.mean()} +- {num_features.std()}")
+    num_flavours = candy_df[flavours].sum(axis=1)
+    candy_df["num_flavours"] = num_flavours
+    print(f"Avergae number of flavours: {num_flavours.mean()} +- {num_flavours.std()}")
+
+    # popular combinations
+    contains_df = create_contains_df(candy_df, features + flavours)
+    contains_df = contains_df.sort_values(by=["n_samples"], ascending=False)
+    contains_df.head(10).to_html("most_common_combinations.html")
+    contains_df = contains_df[contains_df["n_samples"] >= 10].sort_values(
+        by=["mean_winpercent"], ascending=False
+    )
+    contains_df.head(10).to_html("most_popular_combinations.html")
+    contains_df = contains_df[contains_df["n_feat"] == 1].sort_values(
+        by=["mean_winpercent"], ascending=False
+    )
+    contains_df.head(10).to_html("winpct_per_feature.html")
+    candy_df = candy_df.sort_values(by=["winpercent"], ascending=False)
+    pd.set_option("display.max_columns", None)
+    candy_df.head(5).to_html("most_popular_candybrands.html")
+
+    # correlation plots
+    feature_correlation(candy_df.drop(["competitorname"], axis=1))
+    correlation_plot_winpercent(candy_df.drop(["competitorname"], axis=1))
+
+    # histplot winpct dist
+    ax = sns.histplot(candy_df["winpercent"], color="blue", edgecolor="red")
+    ax.yaxis.set_major_locator(MaxNLocator(integer=True))
+    plt.savefig("winpercent_dist_histplot.png")
+    plt.close()
+
+    # histplot num_features
+    sns.histplot(num_features)
+    plt.savefig("num_feature_histplot.png")
+    plt.close()
+
+    # histplot num_flavours
+    sns.histplot(num_flavours)
+    plt.savefig("num_flavours_histplot.png")
+    plt.close()
+
+    # boxplot num features/flavours
+    make_boxplot(
+        candy_df["num_features"],
+        candy_df["winpercent"],
+        "num_feature_winpercent_boxplot.png",
+    )
+    make_boxplot(
+        candy_df["num_flavours"],
+        candy_df["winpercent"],
+        "num_flavours_winpercent_boxplot.png",
+    )
+    # boxplot fruity candy
+    make_boxplot(
+        candy_df["fruity"], candy_df["winpercent"], "fruity_winpercent_boxplot.png"
+    )
+    make_boxplot(
+        (
+            (candy_df["fruity"] == 1)
+            & (candy_df["hard"] == 0)
+            & (candy_df["pluribus"] == 1)
+        ),
+        candy_df["winpercent"],
+        "soft_pluribus_fruity_winpercent_boxplot.png",
+    )
+    # boxplot cookie like candy
+    make_boxplot(
+        ((candy_df["pluribus"] == 1) | (candy_df["crispedricewafer"] == 1)),
+        candy_df["winpercent"],
+        "cookie_like_winpercent_boxplot.png",
+    )
+    make_boxplot(
+        (
+            ((candy_df["pluribus"] == 1) | (candy_df["crispedricewafer"] == 1))
+            & (candy_df["chocolate"] == 1)
+        ),
+        candy_df["winpercent"],
+        "choco_cookie_like_winpercent_boxplot.png",
+    )
 
 
 def lin_reg():
@@ -231,6 +261,7 @@ if __name__ == "__main__":
     from qbstyles import mpl_style
 
     mpl_style(dark=True)
+
     main()
     print("\n### Linear Regression ###")
     lin_reg()
