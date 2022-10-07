@@ -42,7 +42,7 @@ def correlation_plot_winpercent(df):
     plt.close(fig)
 
 
-def make_boxplot(x, y, out_name):
+def make_boxplot(x, y, out_name, x_label=None, x_tick_labels=None):
     ax = sns.boxplot(
         x=x,
         y=y,
@@ -67,6 +67,11 @@ def make_boxplot(x, y, out_name):
             color="blue",
             bbox=dict(facecolor="yellow", alpha=1),
         )
+    if x_label:
+        ax.set_xlabel(x_label)
+    if x_tick_labels:
+        ax.set_xticklabels(x_tick_labels)
+    ax.set_ylabel("Siegerquote [%]")
     plt.savefig(out_name)
     plt.close()
 
@@ -131,20 +136,21 @@ def main():
     print(f"Avergae number of flavours: {num_flavours.mean()} +- {num_flavours.std()}")
 
     # popular combinations
+    pd.set_option("display.max_columns", None)
+    pd.set_option("display.precision", 1)
     contains_df = create_contains_df(candy_df, features + flavours)
     contains_df = contains_df.sort_values(by=["n_samples"], ascending=False)
-    contains_df.head(10).to_html("most_common_combinations.html")
+    contains_df.head(10).to_html("most_common_combinations.html", index=False)
     contains_df = contains_df[contains_df["n_samples"] >= 10].sort_values(
         by=["mean_winpercent"], ascending=False
     )
-    contains_df.head(10).to_html("most_popular_combinations.html")
+    contains_df.head(10).to_html("most_popular_combinations.html", index=False)
     contains_df = contains_df[contains_df["n_feat"] == 1].sort_values(
         by=["mean_winpercent"], ascending=False
     )
-    contains_df.head(10).to_html("winpct_per_feature.html")
+    contains_df.head(10).to_html("winpct_per_feature.html", index=False)
     candy_df = candy_df.sort_values(by=["winpercent"], ascending=False)
-    pd.set_option("display.max_columns", None)
-    candy_df.head(5).to_html("most_popular_candybrands.html")
+    candy_df.head(5).to_html("most_popular_candybrands.html", index=False)
 
     # correlation plots
     feature_correlation(candy_df.drop(["competitorname"], axis=1))
@@ -171,15 +177,21 @@ def main():
         candy_df["num_features"],
         candy_df["winpercent"],
         "num_feature_winpercent_boxplot.png",
+        "Anzahl der Charakteristika",
     )
     make_boxplot(
         candy_df["num_flavours"],
         candy_df["winpercent"],
         "num_flavours_winpercent_boxplot.png",
+        "Anzahl der Geschmäcker",
     )
     # boxplot fruity candy
     make_boxplot(
-        candy_df["fruity"], candy_df["winpercent"], "fruity_winpercent_boxplot.png"
+        candy_df["fruity"],
+        candy_df["winpercent"],
+        "fruity_winpercent_boxplot.png",
+        x_tick_labels=["nicht fruchtig", "fruchtig"],
+        x_label=" ",
     )
     make_boxplot(
         (
@@ -189,12 +201,14 @@ def main():
         ),
         candy_df["winpercent"],
         "soft_pluribus_fruity_winpercent_boxplot.png",
+        x_tick_labels=["nicht fruchtgummiähnlich", "fruchtgummiähnlich"],
     )
     # boxplot cookie like candy
     make_boxplot(
         ((candy_df["pluribus"] == 1) | (candy_df["crispedricewafer"] == 1)),
         candy_df["winpercent"],
         "cookie_like_winpercent_boxplot.png",
+        x_tick_labels=["nicht keksähnlich", "keksähnlich"],
     )
     make_boxplot(
         (
@@ -203,6 +217,7 @@ def main():
         ),
         candy_df["winpercent"],
         "choco_cookie_like_winpercent_boxplot.png",
+        x_tick_labels=["nicht schokokeksähnlich", "schokokeksähnlich"],
     )
 
 
