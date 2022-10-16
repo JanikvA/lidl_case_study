@@ -16,16 +16,17 @@ from sklearn.metrics import (
 from matplotlib.ticker import MaxNLocator
 import itertools
 
+
 def make_barplot(feat_cdf):
-    ax = sns.barplot(feat_cdf, x="combination",y="mean_winpercent", color="blue")
-    ax.tick_params(axis='x', labelrotation = 25)
+    ax = sns.barplot(feat_cdf, x="combination", y="mean_winpercent", color="blue")
+    ax.tick_params(axis="x", labelrotation=25)
     # ax.bar_label(ax.containers[0])
     labels = ax.get_xticklabels()
     for label in labels:
         ax.text(
             label._x,
             30,
-            feat_cdf[feat_cdf["combination"]==label.get_text()]["n_samples"].iloc[0],
+            feat_cdf[feat_cdf["combination"] == label.get_text()]["n_samples"].iloc[0],
             ha="center",
             va="center",
             fontweight="bold",
@@ -34,10 +35,23 @@ def make_barplot(feat_cdf):
             bbox=dict(edgecolor="red", facecolor="yellow", alpha=1),
         )
     ax.set_xlabel(" ")
-    ax.set_xticklabels(["Knusprig", "Erdnuss/Mandel", "Riegel", "Schokolade", "Nugat", "Karamell", "Mehrteilig", "Fruchtig", "Hart"])
+    ax.set_xticklabels(
+        [
+            "Knusprig",
+            "Erdnuss/Mandel",
+            "Riegel",
+            "Schokolade",
+            "Nugat",
+            "Karamell",
+            "Mehrteilig",
+            "Fruchtig",
+            "Hart",
+        ]
+    )
     ax.set_ylabel("Siegerquote [%]")
     plt.savefig("barplot_per_feature.png")
     plt.close()
+
 
 def feature_correlation(plot_data):
     fig, ax = plt.subplots(figsize=(13, 7))
@@ -189,8 +203,8 @@ def main():
     # co-occurence
     binary_feat_candy_df = candy_df[flavours + features]
     coocc_mat = binary_feat_candy_df.T.dot(binary_feat_candy_df)
-    coocc_mat = coocc_mat.apply(lambda row: row/row[row.name], axis=1)
-    coocc_mat.to_html("cooccurence_matrix.html", float_format=lambda flt:f"{flt:.2f}")
+    coocc_mat = coocc_mat.apply(lambda row: row / row[row.name], axis=1)
+    coocc_mat.to_html("cooccurence_matrix.html", float_format=lambda flt: f"{flt:.2f}")
 
     # histplot winpct dist
     ax = sns.histplot(candy_df["winpercent"], color="blue", edgecolor="red")
@@ -248,10 +262,7 @@ def main():
         x_label=" ",
     )
     make_boxplot(
-        (
-            (candy_df["crispedricewafer"] == 1)
-            & (candy_df["chocolate"] == 1)
-        ),
+        ((candy_df["crispedricewafer"] == 1) & (candy_df["chocolate"] == 1)),
         candy_df["winpercent"],
         "choco_cookie_like_winpercent_boxplot.png",
         x_tick_labels=["nicht schokokeksähnlich", "schokokeksähnlich"],
@@ -280,15 +291,24 @@ def lin_reg():
     for met in metrics:
         print(f"{met.__name__}: {met(y_data, y_pred)}")
     for var in x_data.columns:
-        if var=="sugarpercent" or var=="pricepercent": continue
-        tmp_x_data=x_data[x_data[var]==1]
-        tmp_y_data=y_data[tmp_x_data.index]
+        if var == "sugarpercent" or var == "pricepercent":
+            continue
+        tmp_x_data = x_data[x_data[var] == 1]
+        tmp_y_data = y_data[tmp_x_data.index]
         # print(var,len(tmp_x_data),len(tmp_y_data))
         tmp_r2_score = linreg.score(tmp_x_data, tmp_y_data)
         tmp_pred = y_pred[tmp_x_data.index]
         tmp_mse = mean_squared_error(tmp_y_data, tmp_pred)
-        print(f"samples with {var}: n_samps = {len(tmp_y_data)} | R2 = {tmp_r2_score} | MSE = {tmp_mse}")
-    cv = cross_val_score(linreg, x_data, y_data, scoring="neg_mean_squared_error", cv=RepeatedKFold(n_splits=3,n_repeats=100))
+        print(
+            f"samples with {var}: n_samps = {len(tmp_y_data)} | R2 = {tmp_r2_score} | MSE = {tmp_mse}"
+        )
+    cv = cross_val_score(
+        linreg,
+        x_data,
+        y_data,
+        scoring="neg_mean_squared_error",
+        cv=RepeatedKFold(n_splits=3, n_repeats=100),
+    )
     print(f"3-foldx100 cross validation RMSE: {cv.mean():.2f} +- {cv.std():.2f}")
 
 
@@ -317,7 +337,13 @@ def decision_tree():
     fig = plt.gcf()
     fig.set_size_inches(5.5, 1.5)
     plt.savefig("tree_plot.png", dpi=300)
-    cv = cross_val_score(model, x_data, y_data, scoring="neg_mean_squared_error", cv=RepeatedKFold(n_splits=3,n_repeats=100))
+    cv = cross_val_score(
+        model,
+        x_data,
+        y_data,
+        scoring="neg_mean_squared_error",
+        cv=RepeatedKFold(n_splits=3, n_repeats=100),
+    )
     print(f"3-foldx100 cross validation RMSE: {cv.mean():.2f} +- {cv.std():.2f}")
 
 
