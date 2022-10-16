@@ -3,6 +3,7 @@ import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
 from sklearn.tree import DecisionTreeRegressor, plot_tree
+from sklearn.model_selection import cross_val_score, RepeatedKFold
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import (
     mean_squared_error,
@@ -287,12 +288,14 @@ def lin_reg():
         tmp_pred = y_pred[tmp_x_data.index]
         tmp_mse = mean_squared_error(tmp_y_data, tmp_pred)
         print(f"samples with {var}: n_samps = {len(tmp_y_data)} | R2 = {tmp_r2_score} | MSE = {tmp_mse}")
+    cv = cross_val_score(linreg, x_data, y_data, scoring="neg_mean_squared_error", cv=RepeatedKFold(n_splits=3,n_repeats=100))
+    print(f"3-foldx100 cross validation RMSE: {cv.mean():.2f} +- {cv.std():.2f}")
 
 
 def decision_tree():
     candy_df = pd.read_csv("candy-data.csv")
     model = DecisionTreeRegressor(max_depth=3)
-    x_data = candy_df.drop(["winpercent", "competitorname", "sugarpercent", "pricepercent"], axis=1)
+    x_data = candy_df.drop(["winpercent", "competitorname"], axis=1)
     y_data = candy_df["winpercent"]
     model.fit(x_data, y_data)
     y_pred = model.predict(x_data)
@@ -314,6 +317,8 @@ def decision_tree():
     fig = plt.gcf()
     fig.set_size_inches(5.5, 1.5)
     plt.savefig("tree_plot.png", dpi=300)
+    cv = cross_val_score(model, x_data, y_data, scoring="neg_mean_squared_error", cv=RepeatedKFold(n_splits=3,n_repeats=100))
+    print(f"3-foldx100 cross validation RMSE: {cv.mean():.2f} +- {cv.std():.2f}")
 
 
 if __name__ == "__main__":
