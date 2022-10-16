@@ -15,6 +15,28 @@ from sklearn.metrics import (
 from matplotlib.ticker import MaxNLocator
 import itertools
 
+def make_barplot(feat_cdf):
+    ax = sns.barplot(feat_cdf, x="combination",y="mean_winpercent", color="blue")
+    ax.tick_params(axis='x', labelrotation = 25)
+    # ax.bar_label(ax.containers[0])
+    labels = ax.get_xticklabels()
+    for label in labels:
+        ax.text(
+            label._x,
+            30,
+            feat_cdf[feat_cdf["combination"]==label.get_text()]["n_samples"].iloc[0],
+            ha="center",
+            va="center",
+            fontweight="bold",
+            size=10,
+            color="blue",
+            bbox=dict(edgecolor="red", facecolor="yellow", alpha=1),
+        )
+    ax.set_xlabel(" ")
+    ax.set_xticklabels(["Knusprig", "Erdnuss/Mandel", "Riegel", "Schokolade", "Nugat", "Karamell", "Mehrteilig", "Fruchtig", "Hart"])
+    ax.set_ylabel("Siegerquote [%]")
+    plt.savefig("barplot_per_feature.png")
+    plt.close()
 
 def feature_correlation(plot_data):
     fig, ax = plt.subplots(figsize=(13, 7))
@@ -154,6 +176,7 @@ def main():
         by=["mean_winpercent"], ascending=False
     )
     feat_cdf.head(10).to_html("winpct_per_feature.html", index=False)
+    make_barplot(feat_cdf)
 
     brands_cdf = candy_df.sort_values(by=["winpercent"], ascending=False)
     brands_cdf.head(5).to_html("most_popular_candybrands.html", index=False)
@@ -257,7 +280,7 @@ def lin_reg():
         print(f"{met.__name__}: {met(y_data, y_pred)}")
     for var in x_data.columns:
         if var=="sugarpercent" or var=="pricepercent": continue
-        tmp_x_data=x_data[x_data[var]==0]
+        tmp_x_data=x_data[x_data[var]==1]
         tmp_y_data=y_data[tmp_x_data.index]
         # print(var,len(tmp_x_data),len(tmp_y_data))
         tmp_r2_score = linreg.score(tmp_x_data, tmp_y_data)
