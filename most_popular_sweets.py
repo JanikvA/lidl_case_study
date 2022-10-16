@@ -1,4 +1,5 @@
 import pandas as pd
+import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
 from sklearn.tree import DecisionTreeRegressor, plot_tree
@@ -65,7 +66,7 @@ def make_boxplot(x, y, out_name, x_label=None, x_tick_labels=None):
             fontweight="bold",
             size=10,
             color="blue",
-            bbox=dict(facecolor="yellow", alpha=1),
+            bbox=dict(edgecolor="red", facecolor="yellow", alpha=1),
         )
     if x_label:
         ax.set_xlabel(x_label)
@@ -139,22 +140,33 @@ def main():
     pd.set_option("display.max_columns", None)
     pd.set_option("display.precision", 1)
     contains_df = create_contains_df(candy_df, features + flavours)
-    contains_df = contains_df.sort_values(by=["n_samples"], ascending=False)
-    contains_df.head(10).to_html("most_common_combinations.html", index=False)
-    contains_df = contains_df[contains_df["n_samples"] >= 10].sort_values(
+    common_cdf = contains_df.sort_values(by=["n_samples"], ascending=False)
+    common_cdf.head(5).to_html("most_common_combinations.html", index=False)
+    pop_cdf = contains_df[contains_df["n_samples"] >= 10].sort_values(
         by=["mean_winpercent"], ascending=False
     )
-    contains_df.head(10).to_html("most_popular_combinations.html", index=False)
-    contains_df = contains_df[contains_df["n_feat"] == 1].sort_values(
+    pop_cdf.head(5).to_html("most_popular_combinations.html", index=False)
+    least_cdf = contains_df[contains_df["n_samples"] >= 10].sort_values(
+        by=["mean_winpercent"], ascending=True
+    )
+    least_cdf.head(5).to_html("least_popular_combinations.html", index=False)
+    feat_cdf = contains_df[contains_df["n_feat"] == 1].sort_values(
         by=["mean_winpercent"], ascending=False
     )
-    contains_df.head(10).to_html("winpct_per_feature.html", index=False)
-    candy_df = candy_df.sort_values(by=["winpercent"], ascending=False)
-    candy_df.head(5).to_html("most_popular_candybrands.html", index=False)
+    feat_cdf.head(10).to_html("winpct_per_feature.html", index=False)
+
+    brands_cdf = candy_df.sort_values(by=["winpercent"], ascending=False)
+    brands_cdf.head(5).to_html("most_popular_candybrands.html", index=False)
 
     # correlation plots
     feature_correlation(candy_df.drop(["competitorname"], axis=1))
     correlation_plot_winpercent(candy_df.drop(["competitorname"], axis=1))
+
+    # co-occurence
+    binary_feat_candy_df = candy_df[flavours + features]
+    coocc_mat = binary_feat_candy_df.T.dot(binary_feat_candy_df)
+    coocc_mat = coocc_mat.apply(lambda row: row/row[row.name], axis=1)
+    coocc_mat.to_html("cooccurence_matrix.html", float_format=lambda flt:f"{flt:.2f}")
 
     # histplot winpct dist
     ax = sns.histplot(candy_df["winpercent"], color="blue", edgecolor="red")
@@ -205,14 +217,15 @@ def main():
     )
     # boxplot cookie like candy
     make_boxplot(
-        ((candy_df["pluribus"] == 1) | (candy_df["crispedricewafer"] == 1)),
+        (candy_df["crispedricewafer"] == 1),
         candy_df["winpercent"],
         "cookie_like_winpercent_boxplot.png",
         x_tick_labels=["nicht keksähnlich", "keksähnlich"],
+        x_label=" ",
     )
     make_boxplot(
         (
-            ((candy_df["pluribus"] == 1) | (candy_df["crispedricewafer"] == 1))
+            (candy_df["crispedricewafer"] == 1)
             & (candy_df["chocolate"] == 1)
         ),
         candy_df["winpercent"],
@@ -242,12 +255,21 @@ def lin_reg():
     ]
     for met in metrics:
         print(f"{met.__name__}: {met(y_data, y_pred)}")
+    for var in x_data.columns:
+        if var=="sugarpercent" or var=="pricepercent": continue
+        tmp_x_data=x_data[x_data[var]==0]
+        tmp_y_data=y_data[tmp_x_data.index]
+        # print(var,len(tmp_x_data),len(tmp_y_data))
+        tmp_r2_score = linreg.score(tmp_x_data, tmp_y_data)
+        tmp_pred = y_pred[tmp_x_data.index]
+        tmp_mse = mean_squared_error(tmp_y_data, tmp_pred)
+        print(f"samples with {var}: n_samps = {len(tmp_y_data)} | R2 = {tmp_r2_score} | MSE = {tmp_mse}")
 
 
 def decision_tree():
     candy_df = pd.read_csv("candy-data.csv")
     model = DecisionTreeRegressor(max_depth=3)
-    x_data = candy_df.drop(["winpercent", "competitorname"], axis=1)
+    x_data = candy_df.drop(["winpercent", "competitorname", "sugarpercent", "pricepercent"], axis=1)
     y_data = candy_df["winpercent"]
     model.fit(x_data, y_data)
     y_pred = model.predict(x_data)
