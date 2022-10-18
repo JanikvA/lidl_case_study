@@ -3,7 +3,7 @@ import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
 from sklearn.tree import DecisionTreeRegressor, plot_tree
-from sklearn.model_selection import cross_val_score, RepeatedKFold
+from sklearn.model_selection import cross_validate, RepeatedKFold
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import (
     mean_squared_error,
@@ -212,6 +212,22 @@ def main():
     plt.savefig("winpercent_dist_histplot.png")
     plt.close()
 
+    # pairplot for continious variables
+    sns.pairplot(
+        candy_df,
+        vars=["winpercent", "pricepercent", "sugarpercent"],
+        hue="chocolate",
+        corner=True,
+    )
+    plt.savefig("pairplot_choco_hue.png")
+    plt.close()
+
+    sns.pairplot(
+        candy_df, vars=["winpercent", "pricepercent", "sugarpercent"], corner=True
+    )
+    plt.savefig("pairplot.png")
+    plt.close()
+
     # histplot num_features
     sns.histplot(num_features)
     plt.savefig("num_feature_histplot.png")
@@ -302,14 +318,17 @@ def lin_reg():
         print(
             f"samples with {var}: n_samps = {len(tmp_y_data)} | R2 = {tmp_r2_score} | MSE = {tmp_mse}"
         )
-    cv = cross_val_score(
+    cv = cross_validate(
         linreg,
         x_data,
         y_data,
         scoring="neg_mean_squared_error",
-        cv=RepeatedKFold(n_splits=3, n_repeats=100),
+        cv=RepeatedKFold(n_splits=4, n_repeats=100),
+        return_train_score=True,
     )
-    print(f"3-foldx100 cross validation RMSE: {cv.mean():.2f} +- {cv.std():.2f}")
+    print(
+        f"4-foldx100 cross validation RMSE test-score (train-score): {cv['test_score'].mean():.2f} +- {cv['test_score'].std():.2f} ({cv['train_score'].mean():.2f} +- {cv['train_score'].std():.2f})"
+    )
 
 
 def decision_tree():
@@ -337,14 +356,17 @@ def decision_tree():
     fig = plt.gcf()
     fig.set_size_inches(5.5, 1.5)
     plt.savefig("tree_plot.png", dpi=300)
-    cv = cross_val_score(
+    cv = cross_validate(
         model,
         x_data,
         y_data,
         scoring="neg_mean_squared_error",
-        cv=RepeatedKFold(n_splits=3, n_repeats=100),
+        cv=RepeatedKFold(n_splits=4, n_repeats=100),
+        return_train_score=True,
     )
-    print(f"3-foldx100 cross validation RMSE: {cv.mean():.2f} +- {cv.std():.2f}")
+    print(
+        f"4-foldx100 cross validation RMSE test-score (train-score): {cv['test_score'].mean():.2f} +- {cv['test_score'].std():.2f} ({cv['train_score'].mean():.2f} +- {cv['train_score'].std():.2f})"
+    )
 
 
 if __name__ == "__main__":
